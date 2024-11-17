@@ -2,10 +2,9 @@ export const GITHUB_CONFIG = {
   owner: 'developMEnew',
   repo: 'upload_s_db',
   branch: 'main',
-  token:
-    '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', // Replace with your GitHub token
+  token: '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',
   paths: {
-    data: 'data/books.json',
+    data: 'db/books.json',
     images: 'images',
   },
 };
