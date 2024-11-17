@@ -1,10 +1,37 @@
 import { Octokit } from '@octokit/rest';
-import { encode } from 'base-64';
+import { encode, decode } from 'base-64';
 import { GITHUB_CONFIG } from '../config/github';
 import toast from 'react-hot-toast';
 import type { BookItem } from '../types';
 
-const octokit = new Octokit({ auth: GITHUB_CONFIG.token });
+const octokit = new Octokit({ 
+  auth: GITHUB_CONFIG.token,
+  userAgent: 'book-inventory-app/1.0.0',
+});
+
+const handleGitHubError = (error: any, operation: string) => {
+  console.error(`GitHub ${operation} error:`, error);
+  
+  if (error.status === 401) {
+    const message = 'GitHub authentication failed. Please check your credentials.';
+    toast.error(message);
+    return new Error(message);
+  }
+  
+  if (error.status === 403) {
+    const message = 'GitHub API rate limit exceeded. Please try again later.';
+    toast.error(message);
+    return new Error(message);
+  }
+  
+  if (error.status === 404) {
+    return null; // Not found is handled specially in some cases
+  }
+  
+  const message = `Failed to ${operation}. Please try again.`;
+  toast.error(message);
+  return new Error(message);
+};
 
 async function getFileSha(path: string): Promise<string | null> {
   try {
@@ -15,10 +42,12 @@ async function getFileSha(path: string): Promise<string | null> {
       ref: GITHUB_CONFIG.branch,
     });
 
-    return 'sha' in response.data ? response.data.sha : null;
+    if ('sha' in response.data) {
+      return response.data.sha;
+    }
+    return null;
   } catch (error: any) {
-    if (error.status === 404) return null;
-    throw error;
+    return handleGitHubError(error, 'get file SHA');
   }
 }
 
@@ -48,9 +77,8 @@ export async function uploadImageToGitHub(imageBlob: Blob, fileName: string): Pr
     });
 
     return `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${path}`;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    toast.error('Failed to upload image');
+  } catch (error: any) {
+    handleGitHubError(error, 'upload image');
     throw error;
   }
 }
@@ -60,7 +88,6 @@ export async function fetchBooks(): Promise<BookItem[]> {
     const sha = await getFileSha(GITHUB_CONFIG.paths.data);
     
     if (!sha) {
-      // Initialize with empty array if file doesn't exist
       await saveBooks([]);
       return [];
     }
@@ -76,15 +103,15 @@ export async function fetchBooks(): Promise<BookItem[]> {
       throw new Error('Invalid response format');
     }
 
-    const content = Buffer.from(response.data.content, 'base64').toString();
+    const content = decode(response.data.content);
     const books = JSON.parse(content);
     return Array.isArray(books) ? books : [];
   } catch (error: any) {
-    if (error.status === 404) {
+    const handledError = handleGitHubError(error, 'fetch books');
+    if (handledError === null) {
       return [];
     }
-    console.error('Error fetching books:', error);
-    throw error;
+    throw handledError;
   }
 }
 
@@ -93,31 +120,17 @@ export async function saveBooks(books: BookItem[]): Promise<void> {
     const content = JSON.stringify(books, null, 2);
     const sha = await getFileSha(GITHUB_CONFIG.paths.data);
 
-    if (!sha) {
-      // Create new file
-      await octokit.repos.createOrUpdateFileContents({
-        owner: GITHUB_CONFIG.owner,
-        repo: GITHUB_CONFIG.repo,
-        path: GITHUB_CONFIG.paths.data,
-        message: 'Initialize books data',
-        content: encode(content),
-        branch: GITHUB_CONFIG.branch,
-      });
-    } else {
-      // Update existing file with SHA
-      await octokit.repos.createOrUpdateFileContents({
-        owner: GITHUB_CONFIG.owner,
-        repo: GITHUB_CONFIG.repo,
-        path: GITHUB_CONFIG.paths.data,
-        message: 'Update books data',
-        content: encode(content),
-        branch: GITHUB_CONFIG.branch,
-        sha,
-      });
-    }
-  } catch (error) {
-    console.error('Error saving books:', error);
-    toast.error('Failed to save books');
+    await octokit.repos.createOrUpdateFileContents({
+      owner: GITHUB_CONFIG.owner,
+      repo: GITHUB_CONFIG.repo,
+      path: GITHUB_CONFIG.paths.data,
+      message: sha ? 'Update books data' : 'Initialize books data',
+      content: encode(content),
+      branch: GITHUB_CONFIG.branch,
+      ...(sha && { sha }),
+    });
+  } catch (error: any) {
+    handleGitHubError(error, 'save books');
     throw error;
   }
 }
