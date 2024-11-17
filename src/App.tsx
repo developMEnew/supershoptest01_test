@@ -3,44 +3,48 @@ import Header from './components/Header';
 import StatsCard from './components/StatsCard';
 import BookGrid from './components/BookGrid';
 import AddItemForm from './components/AddItemForm';
-import { SAMPLE_BOOKS } from './utils/constants';
+import ConnectionStatus from './components/ConnectionStatus';
+import LoadingSpinner from './components/LoadingSpinner';
+import { useGitHubStatus } from './hooks/useGitHubStatus';
+import { useBooks } from './hooks/useBooks';
+import { Toaster } from 'react-hot-toast';
 import type { BookItem } from './types';
 
 function App() {
-  const [books, setBooks] = useState<BookItem[]>(SAMPLE_BOOKS);
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [editingBook, setEditingBook] = useState<BookItem | undefined>();
+  const { isConnected, connectionChecked } = useGitHubStatus();
+  const { books, loading, addBook, updateBook, deleteBook } = useBooks();
 
-  const handleAddBook = (bookData: Omit<BookItem, 'id' | 'dateAdded'>) => {
-    const newBook: BookItem = {
-      ...bookData,
-      id: books.length + 1,
-      dateAdded: new Date().toISOString().split('T')[0]
-    };
-    setBooks([...books, newBook]);
+  const handleAddBook = async (bookData: Omit<BookItem, 'id' | 'dateAdded'>) => {
+    await addBook(bookData);
     setIsAddingItem(false);
   };
 
-  const handleEditBook = (bookData: Omit<BookItem, 'id' | 'dateAdded'>) => {
+  const handleEditBook = async (bookData: Omit<BookItem, 'id' | 'dateAdded'>) => {
     if (editingBook) {
-      setBooks(books.map(book => 
-        book.id === editingBook.id 
-          ? { ...book, ...bookData }
-          : book
-      ));
+      await updateBook(editingBook.id, bookData);
       setEditingBook(undefined);
       setIsAddingItem(false);
     }
   };
 
-  const handleDeleteBook = (book: BookItem) => {
-    setBooks(books.filter(b => b.id !== book.id));
+  const handleDeleteBook = async (book: BookItem) => {
+    await deleteBook(book.id);
     setEditingBook(undefined);
     setIsAddingItem(false);
   };
 
   const totalItems = books.reduce((sum, book) => sum + book.quantity, 0);
   const totalBooks = books.length;
+
+  if (!connectionChecked) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -66,18 +70,23 @@ function App() {
         ) : (
           <>
             <StatsCard totalItems={totalItems} totalBooks={totalBooks} />
-            <BookGrid 
-              books={books}
-              onEditBook={(book) => {
-                setEditingBook(book);
-                setIsAddingItem(true);
-              }}
-            />
+            {loading ? (
+              <LoadingSpinner />
+            ) : (
+              <BookGrid 
+                books={books}
+                onEditBook={(book) => {
+                  setEditingBook(book);
+                  setIsAddingItem(true);
+                }}
+              />
+            )}
           </>
         )}
       </main>
+
+      <ConnectionStatus isConnected={isConnected} />
+      <Toaster />
     </div>
   );
 }
-
-export default App;
