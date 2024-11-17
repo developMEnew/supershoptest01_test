@@ -33,7 +33,14 @@ function App() {
     }
   };
 
+  const handleDeleteBook = (book: BookItem) => {
+    setBooks(books.filter(b => b.id !== book.id));
+    setEditingBook(undefined);
+    setIsAddingItem(false);
+  };
+
   const totalItems = books.reduce((sum, book) => sum + book.quantity, 0);
+  const totalBooks = books.length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -50,6 +57,7 @@ function App() {
           <AddItemForm
             book={editingBook}
             onSubmit={editingBook ? handleEditBook : handleAddBook}
+            onDelete={handleDeleteBook}
             onCancel={() => {
               setIsAddingItem(false);
               setEditingBook(undefined);
@@ -57,7 +65,7 @@ function App() {
           />
         ) : (
           <>
-            <StatsCard totalItems={totalItems} />
+            <StatsCard totalItems={totalItems} totalBooks={totalBooks} />
             <BookGrid 
               books={books}
               onEditBook={(book) => {

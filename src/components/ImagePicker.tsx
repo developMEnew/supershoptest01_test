@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { BOOK_IMAGES } from '../utils/constants';
-import { ImageIcon } from 'lucide-react';
+import { ImageIcon, Upload } from 'lucide-react';
 
 interface ImagePickerProps {
   selectedUrl: string;
@@ -9,28 +9,58 @@ interface ImagePickerProps {
 
 export default function ImagePicker({ selectedUrl, onSelect }: ImagePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      onSelect(imageUrl);
+      setIsOpen(false);
+    }
+  };
 
   return (
     <div className="relative">
-      <div 
-        className="relative border border-gray-300 rounded-lg overflow-hidden cursor-pointer group"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {selectedUrl ? (
-          <img 
-            src={selectedUrl} 
-            alt="Selected book"
-            className="w-full h-48 object-cover"
-          />
-        ) : (
-          <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
-            <ImageIcon size={48} className="text-gray-400" />
+      <div className="grid grid-cols-2 gap-4">
+        <div 
+          className="relative border border-gray-300 rounded-lg overflow-hidden cursor-pointer group"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          {selectedUrl ? (
+            <img 
+              src={selectedUrl} 
+              alt="Selected book"
+              className="w-full h-48 object-cover"
+            />
+          ) : (
+            <div className="w-full h-48 bg-gray-50 flex items-center justify-center">
+              <ImageIcon size={48} className="text-gray-400" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center">
+            <span className="text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              Choose Preset
+            </span>
           </div>
-        )}
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center">
-          <span className="text-white bg-black bg-opacity-50 px-3 py-1 rounded-full text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-            Choose Image
-          </span>
+        </div>
+
+        <div 
+          className="relative border border-gray-300 rounded-lg overflow-hidden cursor-pointer group"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <div className="w-full h-48 bg-gray-50 flex flex-col items-center justify-center gap-2">
+            <Upload size={48} className="text-gray-400" />
+            <span className="text-sm text-gray-500">Upload from Device</span>
+          </div>
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all" />
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
         </div>
       </div>
 
