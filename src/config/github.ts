@@ -1,10 +1,10 @@
 export const GITHUB_CONFIG = {
-  owner: 'shop-inv-5c4cb',
-  repo: 'book-inventory',
+  owner: 'developMEnew',
+  repo: 'upload_s_db',
   branch: 'main',
-  token: 'ghp_YourGitHubTokenHere', // Replace with your GitHub token
+  token: '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',
   paths: {
-    data: 'data/books.json',
-    images: 'images'
-  }
+    data: 'books.json', // Simplified path for better reliability
+    images: 'images',
+  },
 };

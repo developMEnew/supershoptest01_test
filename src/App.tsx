@@ -10,7 +10,7 @@ import { useBooks } from './hooks/useBooks';
 import { Toaster } from 'react-hot-toast';
 import type { BookItem } from './types';
 
-function App() {
+export default function App() {
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [editingBook, setEditingBook] = useState<BookItem | undefined>();
   const { isConnected, connectionChecked } = useGitHubStatus();
